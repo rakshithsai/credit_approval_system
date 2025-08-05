@@ -1,0 +1,25 @@
+version: '3'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: credit_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: example
+    ports: ["5432:5432"]
+  redis:
+    image: redis:7
+  web:
+    build: .
+    #command: sh -c "python manage.py migrate && celery -A app core.tasks ingest && gunicorn app.wsgi:application --bind 0.0.0.0:8000"
+    command: ["./wait_for_db.sh", "python", "manage.py", "runserver", "0.0.0.0:8000"]
+    volumes:
+      - .:/code
+    ports: ["8000:8000"]
+    depends_on: ["db", "redis"]
+  celery:
+    build: .
+    command: celery -A app worker --loglevel=info
+    volumes:
+      - .:/code
+    depends_on: ["db", "redis"]
